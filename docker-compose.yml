@@ -1,0 +1,56 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: study-chat-bot-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - study-chat-bot-net
+
+  backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    container_name: study-chat-bot-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Sobreescribimos DATABASE_URL para que apunte al servicio "postgres"
+      # de la red interna de Docker, no a localhost.
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      CHROMA_PERSIST_DIR: /app/chroma_data
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      # Persiste los embeddings de Chroma entre reinicios del contenedor
+      - chroma_data:/app/chroma_data
+      # Hot-reload en desarrollo: monta el código local dentro del contenedor.
+      # Coméntalo si vas a usar la imagen "tal cual" sin editar en vivo.
+      - ./Backend/app:/app/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - study-chat-bot-net
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+networks:
+  study-chat-bot-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  chroma_data:
