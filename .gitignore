@@ -6,6 +6,8 @@ venv/
 # Variables de entorno
 .env
 .env.*
+!.env.example
+!Backend/**/.env.example
 
 # Python
 __pycache__/
