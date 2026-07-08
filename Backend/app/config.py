@@ -13,7 +13,7 @@ class Settings(BaseSettings):
 
     # --- App ---
     ENVIRONMENT: str = "development"  # development | production
-    FRONTEND_ORIGIN: str = "http://localhost:5173"
+    FRONTEND_ORIGIN: str = "http://localhost:3000"
     COOKIE_SECURE: bool = False  # True en producción (requiere HTTPS)
 
     # --- LLM / RAG ---

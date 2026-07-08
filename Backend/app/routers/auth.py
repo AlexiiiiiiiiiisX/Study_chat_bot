@@ -57,10 +57,14 @@ async def register(request: Request, data: UserCreate, db: AsyncSession = Depend
     user = User(
         email=data.email,
         hashed_password=hash_password(data.password),
-        is_verified=False,  # cambiar a True si no vas a implementar verificación por email
+        # En desarrollo no hay flujo de email todavía; en producción se conserva la verificación.
+        is_verified=settings.ENVIRONMENT == "development",
     )
     db.add(user)
     await db.commit()
+
+    if user.is_verified:
+        return MessageResponse(msg="Usuario creado. Ya puedes iniciar sesión.")
 
     # TODO: generar token de verificación y enviar email (ver services/email.py)
     return MessageResponse(msg="Usuario creado. Revisa tu email para verificar la cuenta.")
