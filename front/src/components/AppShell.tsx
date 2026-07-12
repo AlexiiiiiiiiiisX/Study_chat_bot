@@ -10,6 +10,7 @@ const navItems = [
   { href: "/dashboard/chat", label: "Chat RAG" },
   { href: "/dashboard/flashcards", label: "Flashcards" },
   { href: "/dashboard/quizzes", label: "Quizzes" },
+  { href: "/dashboard/rooms", label: "Salas" },
   { href: "/admin", label: "Admin" }
 ]
 
