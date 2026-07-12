@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Loader2, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { StatusMessage } from "@/components/StatusMessage";
 import { studyApi } from "@/lib/api";
@@ -86,6 +87,14 @@ export default function DashboardPage() {
     });
   }
 
+  async function deleteDocument(documentId: string, filename: string) {
+    await withBusy("delete", async () => {
+      await studyApi.deleteDocument(documentId);
+      setMessage(`Documento eliminado: ${filename}`);
+      await loadData();
+    });
+  }
+
   async function askQuestion(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!question.trim()) return;
@@ -130,175 +139,292 @@ export default function DashboardPage() {
 
   return (
     <AppShell>
-      <header className="page-header">
-        <div>
-          <p className="eyebrow">Estudio</p>
-          <h2>Chat, documentos y práctica</h2>
-        </div>
-        <form className="upload-form" onSubmit={uploadDocument}>
-          <input accept="application/pdf" name="file" required type="file" />
-          <button className="primary-button" disabled={busy === "upload"} type="submit">
-            {busy === "upload" ? "Subiendo..." : "Subir PDF"}
-          </button>
-        </form>
-      </header>
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 p-6">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="mb-10">
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">Estudio</h1>
+            <p className="text-gray-600 mb-8">Chat, documentos y práctica</p>
 
-      <StatusMessage type="error" message={error} />
-      <StatusMessage type="success" message={message} />
-
-      <section className="stats-grid">
-        <Stat label="Documentos" value={stats?.total_documents ?? 0} />
-        <Stat label="Flashcards" value={stats?.total_flashcards ?? 0} />
-        <Stat label="Intentos quiz" value={stats?.total_quiz_attempts ?? 0} />
-        <Stat label="Promedio" value={`${stats?.average_quiz_score_pct ?? 0}%`} />
-      </section>
-
-      <section className="workspace-grid">
-        <div className="panel">
-          <div className="panel-heading">
-            <h3>Documentos</h3>
-            <select value={selectedDocumentId} onChange={(event) => setSelectedDocumentId(event.target.value)}>
-              <option value="">Todos los documentos</option>
-              {documents.map((document) => (
-                <option key={document.id} value={document.id}>
-                  {document.filename}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="document-list">
-            {documents.map((document) => (
-              <article className={document.id === selectedDocumentId ? "mini-card selected" : "mini-card"} key={document.id}>
-                <button type="button" onClick={() => setSelectedDocumentId(document.id)}>
-                  <strong>{document.filename}</strong>
-                  <span>
-                    {document.status} · {document.total_pages} pág. · {document.total_chunks} chunks
-                  </span>
-                </button>
-                <button className="danger-button" type="button" onClick={() => void withBusy("delete", async () => {
-                  await studyApi.deleteDocument(document.id);
-                  await loadData();
-                })}>
-                  Eliminar
-                </button>
-              </article>
-            ))}
-            {documents.length === 0 && <p className="muted">Sube un PDF para comenzar.</p>}
-          </div>
-        </div>
-
-        <div className="panel">
-          <div className="panel-heading">
-            <h3>Chat RAG</h3>
-            <span className="muted">{selectedDocument ? selectedDocument.filename : "Búsqueda global"}</span>
-          </div>
-          <form className="chat-form" onSubmit={askQuestion}>
-            <textarea
-              maxLength={2000}
-              placeholder="Pregunta algo sobre tus documentos..."
-              value={question}
-              onChange={(event) => setQuestion(event.target.value)}
-            />
-            <button className="primary-button" disabled={busy === "chat"} type="submit">
-              {busy === "chat" ? "Consultando..." : "Preguntar"}
-            </button>
-          </form>
-          {chat && (
-            <article className="answer-box">
-              <p>{chat.answer}</p>
-              {chat.sources.length > 0 && (
-                <div className="sources">
-                  <strong>Fuentes</strong>
-                  {chat.sources.map((source, index) => (
-                    <small key={`${source.source}-${index}`}>
-                      {source.source}
-                      {source.page ? `, página ${source.page}` : ""}: {source.content}
-                    </small>
-                  ))}
-                </div>
-              )}
-            </article>
-          )}
-        </div>
-      </section>
-
-      <section className="workspace-grid">
-        <div className="panel">
-          <div className="panel-heading">
-            <h3>Flashcards</h3>
-            <button className="secondary-button" disabled={!selectedDocumentId || busy === "flashcards"} onClick={generateFlashcards} type="button">
-              Generar 8
-            </button>
-          </div>
-          <div className="cards-grid">
-            {flashcards.map((card) => (
-              <article className="study-card" key={card.id}>
-                <strong>{card.question}</strong>
-                <p>{card.answer}</p>
-                {card.page_reference && <small>Página {card.page_reference}</small>}
-              </article>
-            ))}
-            {flashcards.length === 0 && <p className="muted">Selecciona un documento y genera tarjetas.</p>}
-          </div>
-        </div>
-
-        <div className="panel">
-          <div className="panel-heading">
-            <h3>Quizzes</h3>
-            <div className="button-row">
-              <select
-                value={activeQuiz?.id ?? ""}
-                onChange={(event) => {
-                  setActiveQuiz(quizzes.find((quiz) => quiz.id === event.target.value) ?? null);
-                  setQuizResult(null);
-                  setAnswers({});
-                }}
+            <form className="flex gap-3" onSubmit={uploadDocument}>
+              <input
+                accept="application/pdf"
+                name="file"
+                required
+                type="file"
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
+              />
+              <button
+                disabled={busy === 'upload'}
+                type="submit"
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition flex items-center gap-2"
               >
-                <option value="">Sin quiz</option>
-                {quizzes.map((quiz) => (
-                  <option key={quiz.id} value={quiz.id}>
-                    {quiz.title}
-                  </option>
-                ))}
-              </select>
-              <button className="secondary-button" disabled={!selectedDocumentId || busy === "quiz"} onClick={generateQuiz} type="button">
-                Generar
+                {busy === 'upload' && <Loader2 className="h-4 w-4 animate-spin" />}
+                {busy === 'upload' ? 'Subiendo...' : 'Subir PDF'}
+              </button>
+            </form>
+          </div>
+
+          {/* Messages */}
+          {error && (
+            <div className="mb-6 bg-red-100 border border-red-300 text-red-800 px-6 py-4 rounded-lg flex justify-between items-start">
+              <p className="text-sm font-medium">{error}</p>
+              <button onClick={() => setError(null)} className="text-red-600 hover:text-red-800">
+                <X className="h-4 w-4" />
               </button>
             </div>
-          </div>
-          {activeQuiz ? (
-            <form className="quiz-form" onSubmit={submitQuiz}>
-              {activeQuiz.questions.map((item, questionIndex) => (
-                <fieldset key={item.id}>
-                  <legend>{questionIndex + 1}. {item.question}</legend>
-                  {item.options.map((option, optionIndex) => (
-                    <label className="radio-row" key={option}>
-                      <input
-                        checked={answers[item.id] === optionIndex}
-                        name={item.id}
-                        required
-                        type="radio"
-                        onChange={() => setAnswers((current) => ({ ...current, [item.id]: optionIndex }))}
-                      />
-                      {option}
-                    </label>
-                  ))}
-                </fieldset>
-              ))}
-              <button className="primary-button" disabled={busy === "submit"} type="submit">
-                Calificar
-              </button>
-              {quizResult && (
-                <div className="result-box">
-                  Resultado: {quizResult.score}/{quizResult.total_questions}
-                </div>
-              )}
-            </form>
-          ) : (
-            <p className="muted">Selecciona o genera un quiz para practicar.</p>
           )}
+          {message && (
+            <div className="mb-6 bg-green-100 border border-green-300 text-green-800 px-6 py-4 rounded-lg flex justify-between items-start">
+              <p className="text-sm font-medium">{message}</p>
+              <button onClick={() => setMessage(null)} className="text-green-600 hover:text-green-800">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-10">
+            <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
+              <p className="text-gray-600 text-sm font-medium mb-2">Documentos</p>
+              <p className="text-3xl font-bold text-gray-900">{stats?.total_documents ?? 0}</p>
+            </div>
+            <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
+              <p className="text-gray-600 text-sm font-medium mb-2">Flashcards</p>
+              <p className="text-3xl font-bold text-gray-900">{stats?.total_flashcards ?? 0}</p>
+            </div>
+            <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
+              <p className="text-gray-600 text-sm font-medium mb-2">Intentos quiz</p>
+              <p className="text-3xl font-bold text-gray-900">{stats?.total_quiz_attempts ?? 0}</p>
+            </div>
+            <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
+              <p className="text-gray-600 text-sm font-medium mb-2">Promedio</p>
+              <p className="text-3xl font-bold text-gray-900">{stats?.average_quiz_score_pct ?? 0}%</p>
+            </div>
+          </div>
+
+          {/* Main Content */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
+            {/* Documents Panel */}
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+              <div className="px-6 py-5 border-b border-gray-200">
+                <h2 className="text-lg font-bold text-gray-900 mb-4">Documentos</h2>
+                <select
+                  value={selectedDocumentId}
+                  onChange={(event) => setSelectedDocumentId(event.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 text-sm"
+                >
+                  <option value="">Todos los documentos</option>
+                  {documents.map((document) => (
+                    <option key={document.id} value={document.id}>
+                      {document.filename}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="p-6 space-y-3 max-h-96 overflow-y-auto">
+                {documents.map((document) => (
+                  <div
+                    key={document.id}
+                    className={`p-4 rounded-lg border transition-all ${document.id === selectedDocumentId
+                        ? 'bg-blue-50 border-blue-300'
+                        : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                      }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDocumentId(document.id)}
+                      className="w-full text-left mb-3"
+                    >
+                      <p className="font-semibold text-gray-900">{document.filename}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {document.status} · {document.total_pages} pág. · {document.total_chunks} chunks
+                      </p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void deleteDocument(document.id, document.filename)}
+                      disabled={busy === "delete"}
+                      className="w-full px-3 py-2 bg-red-100 hover:bg-red-200 disabled:bg-gray-100 text-red-700 font-medium text-sm rounded transition"
+                    >
+                      {busy === "delete" ? "Eliminando..." : "Eliminar"}
+                    </button>
+                  </div>
+                ))}
+                {documents.length === 0 && (
+                  <p className="text-gray-500 text-sm text-center py-8">Sube un PDF para comenzar.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Chat Panel */}
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden flex flex-col max-h-[32rem]">
+              <div className="px-6 py-5 border-b border-gray-200">
+                <h2 className="text-lg font-bold text-gray-900 mb-1">Chat RAG</h2>
+                <p className="text-xs text-gray-500">
+                  {selectedDocument ? selectedDocument.filename : 'Búsqueda global'}
+                </p>
+              </div>
+              <div className="flex-1 min-h-0 p-6 overflow-y-auto">
+                {chat && (
+                  <div className="bg-gray-50 rounded-lg p-5 border border-gray-200 mb-4">
+                    <p className="text-gray-800 text-sm leading-relaxed mb-4 max-h-64 overflow-y-auto pr-2 whitespace-pre-wrap">
+                      {chat.answer}
+                    </p>
+                    {chat.sources && chat.sources.length > 0 && (
+                      <div className="pt-4 border-t border-gray-200">
+                        <p className="text-xs font-semibold text-gray-700 mb-3">Fuentes</p>
+                        <div className="space-y-2 max-h-40 overflow-y-auto pr-2">
+                          {chat.sources.map((source, index) => (
+                            <p key={`${source.source}-${index}`} className="text-xs text-gray-600 break-words">
+                              <span className="font-medium">{source.source}</span>
+                              {source.page && <span className="text-gray-500">, página {source.page}</span>}: {source.content}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="px-6 py-5 border-t border-gray-200">
+                <form
+                  className="flex gap-3"
+                  onSubmit={askQuestion}
+                >
+                  <textarea
+                    maxLength={2000}
+                    placeholder="Pregunta algo sobre tus documentos..."
+                    value={question}
+                    onChange={(event) => setQuestion(event.target.value)}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 text-sm resize-none max-h-24"
+                    rows={2}
+                  />
+                  <button
+                    type="submit"
+                    disabled={busy === 'chat'}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition whitespace-nowrap flex items-center gap-2"
+                  >
+                    {busy === 'chat' && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {busy === 'chat' ? 'Consultando...' : 'Preguntar'}
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          {/* Flashcards and Quizzes */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Flashcards Panel */}
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+              <div className="px-6 py-5 border-b border-gray-200 flex items-center justify-between">
+                <h2 className="text-lg font-bold text-gray-900">Flashcards</h2>
+                <button
+                  disabled={!selectedDocumentId || busy === 'flashcards'}
+                  onClick={() => void generateFlashcards()}
+                  type="button"
+                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 text-gray-800 font-medium text-sm rounded-lg transition"
+                >
+                  Generar 8
+                </button>
+              </div>
+              <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+                {flashcards.map((card) => (
+                  <div key={card.id} className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-5 border border-blue-200">
+                    <p className="font-semibold text-gray-900 text-sm mb-3 max-h-28 overflow-y-auto break-words pr-1">{card.question}</p>
+                    <p className="text-gray-700 text-sm mb-3 max-h-32 overflow-y-auto break-words pr-1">{card.answer}</p>
+                    {card.page_reference && <p className="text-xs text-gray-500">Página {card.page_reference}</p>}
+                  </div>
+                ))}
+                {flashcards.length === 0 && (
+                  <p className="text-gray-500 text-sm col-span-2 text-center py-8">
+                    Selecciona un documento y genera tarjetas.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Quizzes Panel */}
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+              <div className="px-6 py-5 border-b border-gray-200">
+                <h2 className="text-lg font-bold text-gray-900 mb-4">Quizzes</h2>
+                <div className="flex gap-3">
+                  <select
+                    value={activeQuiz?.id ?? ''}
+                    onChange={(event) => {
+                      setActiveQuiz(quizzes.find((quiz) => quiz.id === event.target.value) ?? null)
+                      setQuizResult(null)
+                      setAnswers({})
+                    }}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 text-sm"
+                  >
+                    <option value="">Sin quiz</option>
+                    {quizzes.map((quiz) => (
+                      <option key={quiz.id} value={quiz.id}>
+                        {quiz.title}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                  disabled={!selectedDocumentId || busy === 'quiz'}
+                  onClick={() => void generateQuiz()}
+                    type="button"
+                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 text-gray-800 font-medium text-sm rounded-lg transition whitespace-nowrap"
+                  >
+                    Generar
+                  </button>
+                </div>
+              </div>
+              <div className="p-6 max-h-96 overflow-y-auto">
+                {activeQuiz ? (
+                  <form className="space-y-6" onSubmit={submitQuiz}>
+                    {activeQuiz.questions.map((item, questionIndex) => (
+                      <div key={item.id} className="border-b border-gray-200 pb-6 last:border-0 last:pb-0">
+                        <p className="font-semibold text-gray-900 mb-3 text-sm max-h-28 overflow-y-auto break-words pr-1">
+                          {questionIndex + 1}. {item.question}
+                        </p>
+                        <div className="space-y-2">
+                          {item.options.map((option, optionIndex) => (
+                            <label key={option} className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 transition">
+                              <input
+                                checked={answers[item.id] === optionIndex}
+                                name={item.id}
+                                type="radio"
+                                onChange={() => setAnswers((current) => ({ ...current, [item.id]: optionIndex }))}
+                                className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
+                              />
+                              <span className="text-gray-700 text-sm">{option}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    <button
+                      disabled={busy === 'submit'}
+                      type="submit"
+                      className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition mt-6 flex items-center justify-center gap-2"
+                    >
+                      {busy === 'submit' && <Loader2 className="h-4 w-4 animate-spin" />}
+                      Calificar
+                    </button>
+                    {quizResult && (
+                      <div className="bg-green-50 border border-green-300 rounded-lg p-4 mt-4">
+                        <p className="text-green-800 font-semibold text-sm">
+                          Resultado: {quizResult.score}/{quizResult.total_questions}
+                        </p>
+                      </div>
+                    )}
+                  </form>
+                ) : (
+                  <p className="text-gray-500 text-sm text-center py-8">
+                    Selecciona o genera un quiz para practicar.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
-      </section>
+      </div>
     </AppShell>
   );
 }

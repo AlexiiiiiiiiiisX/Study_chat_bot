@@ -18,13 +18,15 @@ class Settings(BaseSettings):
 
     # --- LLM / RAG ---
     GEMINI_API_KEY: str
-    GEMINI_MODEL: str = "gemini-2.5-flash"          # bueno relación costo/calidad
-    GEMINI_MODEL_LITE: str = "gemini-2.5-flash-lite"  # para flashcards/quiz, más barato
+    GEMINI_MODEL: str = "gemini-3.5-flash"          # current stable model for the RAG chat
+    GEMINI_MODEL_LITE: str = "gemini-3.1-flash-lite"  # lower-cost model for flashcards/quizzes
     CHROMA_PERSIST_DIR: str = "./chroma_data"
 
-    # --- Google OAuth (lo conectamos en el siguiente paso) ---
+    # --- Google OAuth ---
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
+    # Debe coincidir exactamente con la URI autorizada en Google Cloud Console.
+    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/auth/google/callback"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

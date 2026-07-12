@@ -6,7 +6,7 @@ echo "Esperando a que Postgres esté disponible..."
 # DATABASE_URL tiene forma: postgresql+asyncpg://user:pass@host:port/dbname
 python3 - <<'PYEOF'
 import os
-import sys
+import sys 
 import time
 import asyncio
 import asyncpg
