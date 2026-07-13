@@ -49,21 +49,23 @@ export function AppShell({ children, requireAdmin = false }: { children: React.R
     : navItems;
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
-      <aside className="sticky top-0 flex h-screen w-20 shrink-0 flex-col border-r border-slate-200 bg-white shadow-sm md:w-64">
-        <div className="border-b border-slate-200 p-4 md:p-6">
+    <div className="flex min-h-screen bg-gradient-to-br from-[#ded1af] via-[#afadcf] to-[#dae1fa]">
+
+      <aside className="sticky top-0 flex h-screen w-20 shrink-0 flex-col border-r border-white/40 backdrop-blur-3xl bg-white/20 shadow-md lg:w-64 ">
+
+        <div className="p-4 md:p-6 ">
           <div className="flex items-center gap-3">
-            <span className="rounded-lg bg-blue-600 p-2 text-white">
-              <BookOpen className="h-5 w-5" />
+            <span className="rounded-lg p-2 text-slate-900">
+              <BookOpen className="h-6 w-6" />
             </span>
             <div className="hidden md:block">
-              <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">Estudia AI</p>
+              <p className="text-md font-semibold uppercase tracking-wider text-zinc-00">Study Chat ₊⊹</p>
               <h1 className="m-0 text-xl font-bold text-slate-900">Panel</h1>
             </div>
           </div>
         </div>
 
-        <nav className="flex-1 space-y-2 overflow-y-auto px-3 py-6 md:px-4" aria-label="Navegación principal">
+        <nav className="flex-1 space-y-2 overflow-y-auto px-3 py-6 md:px-4 " aria-label="Navegación principal">
           {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = item.href === "/dashboard"
@@ -77,8 +79,8 @@ export function AppShell({ children, requireAdmin = false }: { children: React.R
                 aria-current={isActive ? "page" : undefined}
                 className={`flex items-center justify-center gap-3 rounded-lg px-3 py-3 font-medium transition-colors md:justify-start md:px-4 ${
                   isActive
-                    ? "bg-blue-50 text-blue-700"
-                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                    ? "bg-slate-100 border border-white/40 backdrop-blur-3xl bg-white/20 shadow-md  "
+                    : "text-slate-800 hover:bg-slate-100 hover:text-slate-800"
                 }`}
               >
                 <Icon className="h-5 w-5 shrink-0" />
@@ -88,16 +90,16 @@ export function AppShell({ children, requireAdmin = false }: { children: React.R
           })}
         </nav>
 
-        <div className="border-t border-slate-200 p-3 md:p-4">
-          <div className="mb-3 hidden rounded-lg bg-gradient-to-br from-blue-50 to-slate-50 p-4 md:block">
-            <p className="truncate text-sm font-semibold text-slate-900">{user.email}</p>
-            <p className="mt-1 text-xs capitalize text-slate-500">{user.role}</p>
+        <div className="p-3 md:p-4">
+          <div className="mb-3 hidden rounded-lg bg-zinc-800 p-4 md:block bg-white/20 shadow-xl">
+            <p className="truncate text-sm font-semibold text-white">{user.email}</p>
+            <p className="mt-1 text-xs capitalize text-white">{user.role}</p>
           </div>
           <button
             type="button"
             title="Cerrar sesión"
             onClick={() => void logout().then(() => router.replace("/login"))}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-100 px-3 py-2 font-medium text-slate-700 transition-colors hover:bg-red-50 hover:text-red-700 md:px-4"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-100 px-3 py-2 font-medium text-slate-700 transition-colors hover:bg-red-50 hover:text-violet-700 md:px-4 bg-white/40 shadow-md"
           >
             <LogOut className="h-4 w-4" />
             <span className="hidden md:inline">Cerrar sesión</span>
