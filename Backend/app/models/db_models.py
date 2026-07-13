@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import String, Boolean, DateTime, ForeignKey, Integer, Text, Enum as SAEnum, JSON
+from sqlalchemy import String, Boolean, DateTime, ForeignKey, Integer, Text, Enum as SAEnum, JSON, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -16,6 +16,11 @@ def utcnow() -> datetime:
 class UserRole(str, enum.Enum):
     student = "student"
     admin = "admin"
+
+
+class RoomMemberRole(str, enum.Enum):
+    owner = "owner"
+    member = "member"
 
 
 # ---------------------------------------------------------------------------
@@ -45,6 +50,9 @@ class User(Base):
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     documents: Mapped[list["Document"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     quiz_attempts: Mapped[list["QuizAttempt"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    owned_rooms: Mapped[list["StudyRoom"]] = relationship(back_populates="owner", cascade="all, delete-orphan")
+    room_memberships: Mapped[list["RoomMembership"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    shared_room_resources: Mapped[list["RoomResource"]] = relationship(back_populates="shared_by")
 
     def __repr__(self) -> str:
         return f"<User {self.email} ({self.role})>"
@@ -100,9 +108,59 @@ class Document(Base):
     user: Mapped["User"] = relationship(back_populates="documents")
     flashcards: Mapped[list["Flashcard"]] = relationship(back_populates="document", cascade="all, delete-orphan")
     quizzes: Mapped[list["Quiz"]] = relationship(back_populates="document", cascade="all, delete-orphan")
+    room_resources: Mapped[list["RoomResource"]] = relationship(back_populates="document", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<Document {self.filename} ({self.status})>"
+
+
+# ---------------------------------------------------------------------------
+# Salas de estudio y recursos compartidos
+# ---------------------------------------------------------------------------
+
+class StudyRoom(Base):
+    __tablename__ = "study_rooms"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    invite_code: Mapped[str] = mapped_column(String(12), unique=True, index=True, nullable=False)
+    owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    owner: Mapped["User"] = relationship(back_populates="owned_rooms")
+    memberships: Mapped[list["RoomMembership"]] = relationship(back_populates="room", cascade="all, delete-orphan")
+    resources: Mapped[list["RoomResource"]] = relationship(back_populates="room", cascade="all, delete-orphan")
+
+
+class RoomMembership(Base):
+    __tablename__ = "room_memberships"
+    __table_args__ = (UniqueConstraint("room_id", "user_id", name="uq_room_membership"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    room_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("study_rooms.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    role: Mapped[RoomMemberRole] = mapped_column(
+        SAEnum(RoomMemberRole, name="room_member_role"), default=RoomMemberRole.member, nullable=False
+    )
+    joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    room: Mapped["StudyRoom"] = relationship(back_populates="memberships")
+    user: Mapped["User"] = relationship(back_populates="room_memberships")
+
+
+class RoomResource(Base):
+    __tablename__ = "room_resources"
+    __table_args__ = (UniqueConstraint("room_id", "document_id", name="uq_room_document"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    room_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("study_rooms.id", ondelete="CASCADE"), index=True)
+    document_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), index=True)
+    shared_by_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    shared_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    room: Mapped["StudyRoom"] = relationship(back_populates="resources")
+    document: Mapped["Document"] = relationship(back_populates="room_resources")
+    shared_by: Mapped["User"] = relationship(back_populates="shared_room_resources")
 
 
 # ---------------------------------------------------------------------------

@@ -17,7 +17,7 @@ export default function FlashcardsPage() {
   async function loadDocuments() {
     setError(null);
     try {
-      const nextDocuments = await studyApi.documents();
+      const nextDocuments = await studyApi.accessibleDocuments();
       setDocuments(nextDocuments);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al cargar documentos");

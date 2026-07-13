@@ -21,7 +21,7 @@ export default function ChatPage() {
 
   async function loadDocuments() {
     setError(null);
-    const nextDocuments = await studyApi.documents();
+    const nextDocuments = await studyApi.accessibleDocuments();
     setDocuments(nextDocuments);
   }
 
