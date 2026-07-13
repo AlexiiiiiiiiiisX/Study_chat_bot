@@ -72,3 +72,36 @@ export type QuizSubmitResponse = {
     explanation: string | null;
   }>;
 };
+
+export type RoomMember = {
+  user_id: string;
+  email: string;
+  role: "owner" | "member";
+  joined_at: string;
+};
+
+export type RoomSummary = {
+  id: string;
+  name: string;
+  invite_code: string;
+  owner_id: string;
+  role: "owner" | "member";
+  member_count: number;
+  resource_count: number;
+  created_at: string;
+};
+
+export type RoomResource = {
+  id: string;
+  room_id: string;
+  room_name: string;
+  document: DocumentItem;
+  shared_by_id: string;
+  shared_by_email: string;
+  shared_at: string;
+};
+
+export type RoomDetail = RoomSummary & {
+  members: RoomMember[];
+  resources: RoomResource[];
+};

@@ -6,8 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from database import get_db
+from core.access import get_accessible_document
 from core.security import get_current_verified_user
-from models.db_models import User, Document, Quiz, QuizQuestion, QuizAttempt
+from models.db_models import User, Quiz, QuizQuestion, QuizAttempt
 from models.schemas import (
     QuizGenerateRequest,
     QuizPublic,
@@ -26,7 +27,7 @@ async def generate(
     user: User = Depends(get_current_verified_user),
     db: AsyncSession = Depends(get_db),
 ):
-    document = await _get_owned_document(db, data.document_id, user.id)
+    document = await get_accessible_document(db, data.document_id, user.id)
 
     raw_questions = await generate_quiz_questions(document_id=str(document.id), count=data.count)
     if not raw_questions:
@@ -60,7 +61,7 @@ async def list_by_document(
     user: User = Depends(get_current_verified_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await _get_owned_document(db, document_id, user.id)
+    await get_accessible_document(db, document_id, user.id)
     result = await db.execute(
         select(Quiz)
         .where(Quiz.document_id == document_id)
@@ -77,7 +78,7 @@ async def get_quiz(
     db: AsyncSession = Depends(get_db),
 ):
     quiz = await _get_quiz_with_questions(db, quiz_id)
-    await _assert_quiz_ownership(db, quiz, user.id)
+    await get_accessible_document(db, quiz.document_id, user.id)
     return quiz
 
 
@@ -89,7 +90,7 @@ async def submit_quiz(
     db: AsyncSession = Depends(get_db),
 ):
     quiz = await _get_quiz_with_questions(db, quiz_id)
-    await _assert_quiz_ownership(db, quiz, user.id)
+    await get_accessible_document(db, quiz.document_id, user.id)
 
     questions_by_id = {q.id: q for q in quiz.questions}
     results = []
@@ -128,16 +129,6 @@ async def submit_quiz(
 # Helpers
 # ---------------------------------------------------------------------------
 
-async def _get_owned_document(db: AsyncSession, document_id: uuid.UUID, user_id: uuid.UUID) -> Document:
-    result = await db.execute(
-        select(Document).where(Document.id == document_id, Document.user_id == user_id)
-    )
-    document = result.scalar_one_or_none()
-    if document is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Documento no encontrado")
-    return document
-
-
 async def _get_quiz_with_questions(db: AsyncSession, quiz_id: uuid.UUID) -> Quiz:
     result = await db.execute(
         select(Quiz).where(Quiz.id == quiz_id).options(selectinload(Quiz.questions))
@@ -146,12 +137,3 @@ async def _get_quiz_with_questions(db: AsyncSession, quiz_id: uuid.UUID) -> Quiz
     if quiz is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Quiz no encontrado")
     return quiz
-
-
-async def _assert_quiz_ownership(db: AsyncSession, quiz: Quiz, user_id: uuid.UUID) -> None:
-    """El quiz pertenece a un documento; verificamos que ese documento sea del usuario."""
-    result = await db.execute(
-        select(Document.id).where(Document.id == quiz.document_id, Document.user_id == user_id)
-    )
-    if result.scalar_one_or_none() is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Quiz no encontrado")

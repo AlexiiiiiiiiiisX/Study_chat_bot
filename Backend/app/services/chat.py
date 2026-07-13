@@ -13,10 +13,10 @@ SYSTEM_PROMPT = (
 )
 
 
-def retrieve_context(*, user_id: str, question: str, document_id: str | None, n_results: int = 4) -> dict:
-    where: dict = {"user_id": user_id}
+def retrieve_context(*, corpus_user_id: str, question: str, document_id: str | None, n_results: int = 4) -> dict:
+    where: dict = {"user_id": corpus_user_id}
     if document_id:
-        where = {"$and": [{"user_id": user_id}, {"document_id": document_id}]}
+        where = {"$and": [{"user_id": corpus_user_id}, {"document_id": document_id}]}
 
     results = vector_query(
         collection_name=COLLECTION_NAME,
@@ -58,14 +58,14 @@ def build_prompt(question: str, context_text: str) -> str:
 
 
 async def stream_answer(
-    *, user_id: str, question: str, document_id: str | None = None
+    *, corpus_user_id: str, question: str, document_id: str | None = None
 ) -> AsyncGenerator[dict, None]:
     """
     Generador asíncrono que primero emite las fuentes recuperadas y luego
     va emitiendo la respuesta token por token. Pensado para volcarse
     directamente a un StreamingResponse en formato SSE.
     """
-    retrieval = retrieve_context(user_id=user_id, question=question, document_id=document_id)
+    retrieval = retrieve_context(corpus_user_id=corpus_user_id, question=question, document_id=document_id)
 
     yield {"type": "sources", "data": retrieval["sources"]}
 
@@ -76,9 +76,9 @@ async def stream_answer(
     yield {"type": "done", "data": None}
 
 
-async def answer_question(*, user_id: str, question: str, document_id: str | None = None) -> dict:
+async def answer_question(*, corpus_user_id: str, question: str, document_id: str | None = None) -> dict:
     """Versión no-streaming (útil para tests o integraciones que no usan SSE)."""
-    retrieval = retrieve_context(user_id=user_id, question=question, document_id=document_id)
+    retrieval = retrieve_context(corpus_user_id=corpus_user_id, question=question, document_id=document_id)
     prompt = build_prompt(question, retrieval["context_text"])
     answer = await gemini_client.generate(prompt=prompt, system=SYSTEM_PROMPT)
     return {"answer": answer, "sources": retrieval["sources"]}

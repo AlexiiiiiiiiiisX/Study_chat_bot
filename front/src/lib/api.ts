@@ -5,6 +5,9 @@ import type {
   Flashcard,
   Quiz,
   QuizSubmitResponse,
+  RoomDetail,
+  RoomResource,
+  RoomSummary,
   TokenResponse,
   User
 } from "./types";
@@ -143,6 +146,15 @@ export const authApi = {
 export const studyApi = {
   stats: () => apiFetch<DashboardStats>("/dashboard/me"),
   documents: () => apiFetch<DocumentItem[]>("/documents"),
+  async accessibleDocuments() {
+    const [owned, shared] = await Promise.all([
+      apiFetch<DocumentItem[]>("/documents"),
+      apiFetch<RoomResource[]>("/rooms/resources")
+    ]);
+    const documents = new Map(owned.map((document) => [document.id, document]));
+    for (const resource of shared) documents.set(resource.document.id, resource.document);
+    return Array.from(documents.values());
+  },
   uploadDocument(file: File) {
     const formData = new FormData();
     formData.append("file", file);
@@ -171,5 +183,23 @@ export const studyApi = {
       method: "POST",
       body: { answers }
     }),
-  users: () => apiFetch<User[]>("/admin/users")
+  users: () => apiFetch<User[]>("/admin/users"),
+  rooms: () => apiFetch<RoomSummary[]>("/rooms"),
+  room: (roomId: string) => apiFetch<RoomDetail>(`/rooms/${roomId}`),
+  createRoom: (name: string) =>
+    apiFetch<RoomDetail>("/rooms", { method: "POST", body: { name } }),
+  joinRoom: (inviteCode: string) =>
+    apiFetch<RoomDetail>("/rooms/join", { method: "POST", body: { invite_code: inviteCode } }),
+  sharedResources: () => apiFetch<RoomResource[]>("/rooms/resources"),
+  shareDocument: (roomId: string, documentId: string) =>
+    apiFetch<RoomResource>(`/rooms/${roomId}/resources`, {
+      method: "POST",
+      body: { document_id: documentId }
+    }),
+  unshareDocument: (roomId: string, documentId: string) =>
+    apiFetch<{ msg: string }>(`/rooms/${roomId}/resources/${documentId}`, { method: "DELETE" }),
+  leaveRoom: (roomId: string) =>
+    apiFetch<{ msg: string }>(`/rooms/${roomId}/members/me`, { method: "DELETE" }),
+  deleteRoom: (roomId: string) =>
+    apiFetch<{ msg: string }>(`/rooms/${roomId}`, { method: "DELETE" })
 };

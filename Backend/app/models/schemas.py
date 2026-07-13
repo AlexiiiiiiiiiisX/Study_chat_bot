@@ -167,3 +167,65 @@ class DashboardStats(BaseModel):
     total_quiz_attempts: int
     average_quiz_score_pct: float
     last_activity: datetime | None = None
+
+
+# ---------------------------------------------------------------------------
+# Salas de estudio
+# ---------------------------------------------------------------------------
+
+class RoomCreateRequest(BaseModel):
+    name: str = Field(min_length=3, max_length=120)
+
+    @field_validator("name")
+    @classmethod
+    def clean_name(cls, value: str) -> str:
+        value = " ".join(value.split())
+        if len(value) < 3:
+            raise ValueError("El nombre debe tener al menos 3 caracteres")
+        return value
+
+
+class RoomJoinRequest(BaseModel):
+    invite_code: str = Field(min_length=6, max_length=12)
+
+    @field_validator("invite_code")
+    @classmethod
+    def normalize_code(cls, value: str) -> str:
+        return value.strip().upper()
+
+
+class RoomShareDocumentRequest(BaseModel):
+    document_id: uuid.UUID
+
+
+class RoomMemberPublic(BaseModel):
+    user_id: uuid.UUID
+    email: EmailStr
+    role: str
+    joined_at: datetime
+
+
+class RoomSummaryPublic(BaseModel):
+    id: uuid.UUID
+    name: str
+    invite_code: str
+    owner_id: uuid.UUID
+    role: str
+    member_count: int
+    resource_count: int
+    created_at: datetime
+
+
+class RoomResourcePublic(BaseModel):
+    id: uuid.UUID
+    room_id: uuid.UUID
+    room_name: str
+    document: DocumentPublic
+    shared_by_id: uuid.UUID
+    shared_by_email: EmailStr
+    shared_at: datetime
+
+
+class RoomDetailPublic(RoomSummaryPublic):
+    members: list[RoomMemberPublic]
+    resources: list[RoomResourcePublic]

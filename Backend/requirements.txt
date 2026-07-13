@@ -13,6 +13,7 @@ argon2-cffi==25.1.0
 python-multipart==0.0.32
 slowapi==0.1.10
 authlib==1.7.2          # Google OAuth (próximo paso)
+itsdangerous==2.2.0     # sesiones firmadas para OAuth (state/nonce)
 httpx==0.28.1
 
 # --- Configuración ---
