@@ -63,23 +63,23 @@ export default function DashboardPage() {
 
   return (
     <AppShell>
-      <header className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-blue-600">Panel principal</p>
+      <header className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between ">
+        <div className="mb-2">
+          <p className="mb-6 text-md font-semibold uppercase tracking-wider text-zinc-800">Panel principal ☁︎</p>
           <h2 className="text-3xl font-bold text-slate-900">Tus documentos de estudio</h2>
-          <p className="mt-2 text-slate-600">Administra tus fuentes y consulta tu progreso general.</p>
+          <p className="text-slate-900">Administra tus fuentes y consulta tu progreso general.</p>
         </div>
         <form className="flex w-full max-w-xl flex-col gap-3 sm:flex-row" onSubmit={uploadDocument}>
           <input
             accept="application/pdf"
             aria-label="Seleccionar documento PDF"
-            className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+            className="min-w-0 flex-1 rounded-4xl border-4 border-slate-100 bg-white/20 px-3 py-2 text-sm"
             name="file"
             required
             type="file"
           />
           <button
-            className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2 font-medium text-white transition-colors hover:bg-blue-700 disabled:bg-slate-400"
+            className="flex items-center justify-center gap-2 rounded-lg bg-zinc-800/90 px-5 py-2 font-medium text-white transition-colors hover:bg-zinc-800 disabled:bg-slate-400 border border-white/40 backdrop-blur-3xl shadow-xl"
             disabled={busy === "upload"}
             type="submit"
           >
@@ -101,7 +101,8 @@ export default function DashboardPage() {
         <Stat label="Promedio" value={`${stats?.average_quiz_score_pct ?? 0}%`} />
       </section>
 
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      
+      <section className="overflow-hidden rounded-xl border-r-3  border-b-3 border-white/40 backdrop-blur-3xl bg-white/30 shadow-xl">
         <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
           <h3 className="text-lg font-bold text-slate-900">Documentos</h3>
         </div>
@@ -111,7 +112,7 @@ export default function DashboardPage() {
             return (
               <article className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6" key={document.id}>
                 <div className="flex min-w-0 items-start gap-3">
-                  <span className="rounded-lg bg-blue-50 p-2 text-blue-700"><FileText className="h-5 w-5" /></span>
+                  <span className="rounded-lg bg-blue-50 p-2 text-violet-700"><FileText className="h-5 w-5" /></span>
                   <div className="min-w-0">
                     <strong className="block truncate text-slate-900">{document.filename}</strong>
                     <span className="mt-1 block text-sm text-slate-500">
@@ -120,7 +121,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <button
-                  className="flex items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-100 disabled:opacity-60"
+                  className="flex items-center justify-center gap-2 rounded-lg  bg-white/40 px-4 py-2 text-sm font-medium text-rose-800/90 transition-colors hover:bg-white disabled:opacity-60"
                   type="button"
                   disabled={deleting || busy === "upload"}
                   onClick={() => void deleteDocument(document)}
@@ -145,8 +146,8 @@ export default function DashboardPage() {
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
-    <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <span className="text-sm font-medium text-slate-500">{label}</span>
+    <article className="rounded-xl border-2 border-white/30 backdrop-blur-3xl bg-white/40 shadow-lg p-5 ">
+      <span className="text-sm font-medium text-slate-900">{label}</span>
       <strong className="mt-2 block text-3xl font-bold text-slate-900">{value}</strong>
     </article>
   );
