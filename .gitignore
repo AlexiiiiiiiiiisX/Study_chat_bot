@@ -13,6 +13,7 @@ venv/
 __pycache__/
 *.py[cod]
 *.so
+*.tsbuildinfo
 
 # Cachés
 .pytest_cache/

@@ -1,301 +1,141 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
+import { FileText, Loader2, Trash2, Upload } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { StatusMessage } from "@/components/StatusMessage";
 import { studyApi } from "@/lib/api";
-import type { ChatResponse, DashboardStats, DocumentItem, Flashcard, Quiz, QuizSubmitResponse } from "@/lib/types";
+import type { DashboardStats, DocumentItem } from "@/lib/types";
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
-  const [selectedDocumentId, setSelectedDocumentId] = useState("");
-  const [question, setQuestion] = useState("");
-  const [chat, setChat] = useState<ChatResponse | null>(null);
-  const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
-  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
-  const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null);
-  const [answers, setAnswers] = useState<Record<string, number>>({});
-  const [quizResult, setQuizResult] = useState<QuizSubmitResponse | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-
-  const selectedDocument = useMemo(
-    () => documents.find((document) => document.id === selectedDocumentId) ?? null,
-    [documents, selectedDocumentId]
-  );
 
   async function loadData() {
     setError(null);
     const [nextStats, nextDocuments] = await Promise.all([studyApi.stats(), studyApi.documents()]);
     setStats(nextStats);
     setDocuments(nextDocuments);
-    setSelectedDocumentId((current) =>
-      nextDocuments.some((document) => document.id === current) ? current : nextDocuments[0]?.id || ""
-    );
   }
 
   useEffect(() => {
     loadData().catch((err) => setError(err instanceof Error ? err.message : "No se pudo cargar el panel"));
   }, []);
 
-  useEffect(() => {
-    if (!selectedDocumentId) {
-      setFlashcards([]);
-      setQuizzes([]);
-      setActiveQuiz(null);
-      return;
-    }
-
-    Promise.all([studyApi.flashcards(selectedDocumentId), studyApi.quizzes(selectedDocumentId)])
-      .then(([nextFlashcards, nextQuizzes]) => {
-        setFlashcards(nextFlashcards);
-        setQuizzes(nextQuizzes);
-        setActiveQuiz(nextQuizzes[0] ?? null);
-        setAnswers({});
-        setQuizResult(null);
-      })
-      .catch((err) => setError(err instanceof Error ? err.message : "No se pudieron cargar los recursos"));
-  }, [selectedDocumentId]);
-
-  async function withBusy(label: string, action: () => Promise<void>) {
-    setBusy(label);
-    setError(null);
-    setMessage(null);
-    try {
-      await action();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "La operación no pudo completarse");
-    } finally {
-      setBusy(null);
-    }
-  }
-
   async function uploadDocument(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const input = event.currentTarget.elements.namedItem("file") as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
-    await withBusy("upload", async () => {
+
+    setBusy("upload");
+    setError(null);
+    setMessage(null);
+    try {
       const document = await studyApi.uploadDocument(file);
       setMessage(`Documento cargado: ${document.filename}`);
       input.value = "";
       await loadData();
-      setSelectedDocumentId(document.id);
-    });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al subir el archivo");
+    } finally {
+      setBusy(null);
+    }
   }
 
-  async function askQuestion(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!question.trim()) return;
-    await withBusy("chat", async () => {
-      setChat(await studyApi.ask(question.trim(), selectedDocumentId || undefined));
-    });
-  }
-
-  async function generateFlashcards() {
-    if (!selectedDocumentId) return;
-    await withBusy("flashcards", async () => {
-      setFlashcards(await studyApi.generateFlashcards(selectedDocumentId, 8));
-      setMessage("Flashcards generadas correctamente");
+  async function deleteDocument(document: DocumentItem) {
+    setBusy(`delete:${document.id}`);
+    setError(null);
+    setMessage(null);
+    try {
+      await studyApi.deleteDocument(document.id);
+      setMessage(`Documento eliminado: ${document.filename}`);
       await loadData();
-    });
-  }
-
-  async function generateQuiz() {
-    if (!selectedDocumentId) return;
-    await withBusy("quiz", async () => {
-      const quiz = await studyApi.generateQuiz(selectedDocumentId, 5);
-      setQuizzes((current) => [quiz, ...current]);
-      setActiveQuiz(quiz);
-      setAnswers({});
-      setQuizResult(null);
-      setMessage("Quiz generado correctamente");
-    });
-  }
-
-  async function submitQuiz(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!activeQuiz) return;
-    await withBusy("submit", async () => {
-      const payload = activeQuiz.questions.map((item) => ({
-        question_id: item.id,
-        selected_index: answers[item.id] ?? -1
-      }));
-      setQuizResult(await studyApi.submitQuiz(activeQuiz.id, payload));
-      await loadData();
-    });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al eliminar el documento");
+    } finally {
+      setBusy(null);
+    }
   }
 
   return (
     <AppShell>
-      <header className="page-header">
+      <header className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="eyebrow">Estudio</p>
-          <h2>Chat, documentos y práctica</h2>
+          <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-blue-600">Panel principal</p>
+          <h2 className="text-3xl font-bold text-slate-900">Tus documentos de estudio</h2>
+          <p className="mt-2 text-slate-600">Administra tus fuentes y consulta tu progreso general.</p>
         </div>
-        <form className="upload-form" onSubmit={uploadDocument}>
-          <input accept="application/pdf" name="file" required type="file" />
-          <button className="primary-button" disabled={busy === "upload"} type="submit">
+        <form className="flex w-full max-w-xl flex-col gap-3 sm:flex-row" onSubmit={uploadDocument}>
+          <input
+            accept="application/pdf"
+            aria-label="Seleccionar documento PDF"
+            className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+            name="file"
+            required
+            type="file"
+          />
+          <button
+            className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2 font-medium text-white transition-colors hover:bg-blue-700 disabled:bg-slate-400"
+            disabled={busy === "upload"}
+            type="submit"
+          >
+            {busy === "upload" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
             {busy === "upload" ? "Subiendo..." : "Subir PDF"}
           </button>
         </form>
       </header>
 
-      <StatusMessage type="error" message={error} />
-      <StatusMessage type="success" message={message} />
+      <div className="mb-6 space-y-3">
+        <StatusMessage type="error" message={error} />
+        <StatusMessage type="success" message={message} />
+      </div>
 
-      <section className="stats-grid">
+      <section className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4" aria-label="Resumen de actividad">
         <Stat label="Documentos" value={stats?.total_documents ?? 0} />
         <Stat label="Flashcards" value={stats?.total_flashcards ?? 0} />
         <Stat label="Intentos quiz" value={stats?.total_quiz_attempts ?? 0} />
         <Stat label="Promedio" value={`${stats?.average_quiz_score_pct ?? 0}%`} />
       </section>
 
-      <section className="workspace-grid">
-        <div className="panel">
-          <div className="panel-heading">
-            <h3>Documentos</h3>
-            <select value={selectedDocumentId} onChange={(event) => setSelectedDocumentId(event.target.value)}>
-              <option value="">Todos los documentos</option>
-              {documents.map((document) => (
-                <option key={document.id} value={document.id}>
-                  {document.filename}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="document-list">
-            {documents.map((document) => (
-              <article className={document.id === selectedDocumentId ? "mini-card selected" : "mini-card"} key={document.id}>
-                <button type="button" onClick={() => setSelectedDocumentId(document.id)}>
-                  <strong>{document.filename}</strong>
-                  <span>
-                    {document.status} · {document.total_pages} pág. · {document.total_chunks} chunks
-                  </span>
-                </button>
-                <button className="danger-button" type="button" onClick={() => void withBusy("delete", async () => {
-                  await studyApi.deleteDocument(document.id);
-                  await loadData();
-                })}>
-                  Eliminar
-                </button>
-              </article>
-            ))}
-            {documents.length === 0 && <p className="muted">Sube un PDF para comenzar.</p>}
-          </div>
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
+          <h3 className="text-lg font-bold text-slate-900">Documentos</h3>
         </div>
-
-        <div className="panel">
-          <div className="panel-heading">
-            <h3>Chat RAG</h3>
-            <span className="muted">{selectedDocument ? selectedDocument.filename : "Búsqueda global"}</span>
-          </div>
-          <form className="chat-form" onSubmit={askQuestion}>
-            <textarea
-              maxLength={2000}
-              placeholder="Pregunta algo sobre tus documentos..."
-              value={question}
-              onChange={(event) => setQuestion(event.target.value)}
-            />
-            <button className="primary-button" disabled={busy === "chat"} type="submit">
-              {busy === "chat" ? "Consultando..." : "Preguntar"}
-            </button>
-          </form>
-          {chat && (
-            <article className="answer-box">
-              <p>{chat.answer}</p>
-              {chat.sources.length > 0 && (
-                <div className="sources">
-                  <strong>Fuentes</strong>
-                  {chat.sources.map((source, index) => (
-                    <small key={`${source.source}-${index}`}>
-                      {source.source}
-                      {source.page ? `, página ${source.page}` : ""}: {source.content}
-                    </small>
-                  ))}
+        <div className="divide-y divide-slate-100">
+          {documents.map((document) => {
+            const deleting = busy === `delete:${document.id}`;
+            return (
+              <article className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6" key={document.id}>
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="rounded-lg bg-blue-50 p-2 text-blue-700"><FileText className="h-5 w-5" /></span>
+                  <div className="min-w-0">
+                    <strong className="block truncate text-slate-900">{document.filename}</strong>
+                    <span className="mt-1 block text-sm text-slate-500">
+                      {document.status} · {document.total_pages} páginas 
+                    </span>
+                  </div>
                 </div>
-              )}
-            </article>
-          )}
-        </div>
-      </section>
-
-      <section className="workspace-grid">
-        <div className="panel">
-          <div className="panel-heading">
-            <h3>Flashcards</h3>
-            <button className="secondary-button" disabled={!selectedDocumentId || busy === "flashcards"} onClick={generateFlashcards} type="button">
-              Generar 8
-            </button>
-          </div>
-          <div className="cards-grid">
-            {flashcards.map((card) => (
-              <article className="study-card" key={card.id}>
-                <strong>{card.question}</strong>
-                <p>{card.answer}</p>
-                {card.page_reference && <small>Página {card.page_reference}</small>}
+                <button
+                  className="flex items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-100 disabled:opacity-60"
+                  type="button"
+                  disabled={deleting || busy === "upload"}
+                  onClick={() => void deleteDocument(document)}
+                >
+                  {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  {deleting ? "Eliminando..." : "Eliminar"}
+                </button>
               </article>
-            ))}
-            {flashcards.length === 0 && <p className="muted">Selecciona un documento y genera tarjetas.</p>}
-          </div>
-        </div>
-
-        <div className="panel">
-          <div className="panel-heading">
-            <h3>Quizzes</h3>
-            <div className="button-row">
-              <select
-                value={activeQuiz?.id ?? ""}
-                onChange={(event) => {
-                  setActiveQuiz(quizzes.find((quiz) => quiz.id === event.target.value) ?? null);
-                  setQuizResult(null);
-                  setAnswers({});
-                }}
-              >
-                <option value="">Sin quiz</option>
-                {quizzes.map((quiz) => (
-                  <option key={quiz.id} value={quiz.id}>
-                    {quiz.title}
-                  </option>
-                ))}
-              </select>
-              <button className="secondary-button" disabled={!selectedDocumentId || busy === "quiz"} onClick={generateQuiz} type="button">
-                Generar
-              </button>
+            );
+          })}
+          {documents.length === 0 && (
+            <div className="px-6 py-14 text-center text-slate-500">
+              <FileText className="mx-auto mb-3 h-9 w-9 text-slate-300" />
+              <p>Sube un archivo PDF para comenzar a estudiar.</p>
             </div>
-          </div>
-          {activeQuiz ? (
-            <form className="quiz-form" onSubmit={submitQuiz}>
-              {activeQuiz.questions.map((item, questionIndex) => (
-                <fieldset key={item.id}>
-                  <legend>{questionIndex + 1}. {item.question}</legend>
-                  {item.options.map((option, optionIndex) => (
-                    <label className="radio-row" key={option}>
-                      <input
-                        checked={answers[item.id] === optionIndex}
-                        name={item.id}
-                        required
-                        type="radio"
-                        onChange={() => setAnswers((current) => ({ ...current, [item.id]: optionIndex }))}
-                      />
-                      {option}
-                    </label>
-                  ))}
-                </fieldset>
-              ))}
-              <button className="primary-button" disabled={busy === "submit"} type="submit">
-                Calificar
-              </button>
-              {quizResult && (
-                <div className="result-box">
-                  Resultado: {quizResult.score}/{quizResult.total_questions}
-                </div>
-              )}
-            </form>
-          ) : (
-            <p className="muted">Selecciona o genera un quiz para practicar.</p>
           )}
         </div>
       </section>
@@ -305,9 +145,9 @@ export default function DashboardPage() {
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
-    <article className="stat-card">
-      <span>{label}</span>
-      <strong>{value}</strong>
+    <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <span className="text-sm font-medium text-slate-500">{label}</span>
+      <strong className="mt-2 block text-3xl font-bold text-slate-900">{value}</strong>
     </article>
   );
 }
