@@ -65,7 +65,7 @@ export default function DashboardPage() {
     <AppShell>
       <header className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between ">
         <div className="mb-2">
-          <p className="mb-6 text-md font-semibold uppercase tracking-wider text-zinc-800">Panel principal ☁︎</p>
+          <p className="mb-6 text-md font-semibold uppercase tracking-wider text-zinc-800">Panel principal</p>
           <h2 className="text-3xl font-bold text-slate-900">Tus documentos de estudio</h2>
           <p className="text-slate-900">Administra tus fuentes y consulta tu progreso general.</p>
         </div>
@@ -77,7 +77,7 @@ export default function DashboardPage() {
             name="file"
             required
             type="file"
-          />
+          /> 
           <button
             className="flex items-center justify-center gap-2 rounded-lg bg-zinc-800/90 px-5 py-2 font-medium text-white transition-colors hover:bg-zinc-800 disabled:bg-slate-400 border border-white/40 backdrop-blur-3xl shadow-xl"
             disabled={busy === "upload"}

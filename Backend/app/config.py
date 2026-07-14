@@ -18,8 +18,8 @@ class Settings(BaseSettings):
 
     # --- LLM / RAG ---
     GEMINI_API_KEY: str
-    GEMINI_MODEL: str = "gemini-3.5-flash"          # current stable model for the RAG chat
-    GEMINI_MODEL_LITE: str = "gemini-3.1-flash-lite"  # lower-cost model for flashcards/quizzes
+    GEMINI_MODEL: str = "gemini-3.5-flash"
+    GEMINI_MODEL_LITE: str = "gemini-3.1-flash-lite" # lower-cost model for flashcards/quizzes
     CHROMA_PERSIST_DIR: str = "./chroma_data"
 
     # --- Google OAuth ---
